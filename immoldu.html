@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Immo'ldu</title>
+	<meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style type="text/css">
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #viewerDiv {
+            flex: 1;
+            height: 100%;
+            transition: width 0.3s;
+        }
+        #viewerDiv.full-width {
+            width: 100%;
+        }
+        #formDiv {
+            width: 20%;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+        }
+        #infoPanel {
+            width: 20%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #fff;
+            border-left: 1px solid #ddd;
+            overflow-y: auto;
+            display: none;
+            position: relative;
+            font-family: 'Arial', sans-serif;
+        }
+        #infoPanel.visible {
+            display: block;
+        }
+        #closeInfoPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 1.5em;
+            color: #555;
+        }
+        #infoContent {
+            margin-top: 20px;
+        }
+        #infoContent b {
+            color: #333;
+        }
+        #infoContent .info-item {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        #infoContent .info-item i {
+            margin-right: 10px;
+            font-size: 1.2em;
+            color: #007BFF;
+        }
+        #infoContent .info-item span {
+            font-size: 0.9em;
+            color: #555;
+        }
+        #infoContent a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        #infoContent a:hover {
+            text-decoration: underline;
+        }
+        h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        label {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 2px;
+            display: block;
+            text-align: left;
+        }
+        input, select {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.8em;
+            box-sizing: border-box;
+            height: 28px;
+        }
+        input[type="date"] {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.8em;
+            box-sizing: border-box;
+            height: 28px;
+            flex: 1;
+        }
+        .inline-group {
+            display: flex;
+            justify-content: start;
+            gap: 20px;
+            flex: 1;
+        }
+        .inline-group label, .inline-group input, .inline-group select {
+            flex: 1;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .form-group label {
+            margin-bottom: 2px;
+        }
+        .form-group select,
+        .form-group input {
+            margin-bottom: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #resultCount1 {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+		#resultCount2 {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        #popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        #popup h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        #popup p {
+            margin-bottom: 20px;
+            color: #555;
+        }
+        #popup button {
+            width: auto;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #popup button:hover {
+            background-color: #0056b3;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        .info-icon {
+            display: inline-block;
+            margin-left: 5px;
+            cursor: pointer;
+            position: relative;
+            font-size: 0.8em;
+        }
+        .tooltip {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+        .info-icon:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tab {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab button {
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            outline: none;
+            cursor: pointer;
+            padding: 8px 15px;
+            transition: background-color 0.3s;
+            font-size: 0.9em;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .tab button:hover {
+            background-color: #4ABBFF;
+        }
+        .tab button.active {
+            background-color: #007BFF;
+            border-bottom: 1px solid white;
+        }
+        .tabcontent {
+            display: none;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .tabcontent.active {
+            display: block;
+        }
+		
+		.autocomplete {
+			position: relative;
+			display: inline-block;
+			width: 100%;
+		}
+
+		.autocomplete-items {
+			position: absolute;
+			border: 1px solid #d4d4d4;
+			border-bottom: none;
+			border-top: none;
+			z-index: 99;
+			top: 100%;
+			left: 0;
+			right: 0;
+		}
+
+		.autocomplete-items div {
+			padding: 10px;
+			cursor: pointer;
+			background-color: #fff;
+			border-bottom: 1px solid #d4d4d4;
+		}
+
+		.autocomplete-items div:hover {
+			background-color: #e9e9e9;
+		}
+		
+		.leaflet-control-layers-selector {
+			width: 15px; /* Ajustez la largeur selon vos besoins */
+			height: 15px; /* Ajustez la hauteur selon vos besoins */
+		}
+		.leaflet-control-attribution {
+        height: 17px; /* Ajustez la hauteur selon vos besoins */
+        padding: 5px 5px; /* Ajustez le padding pour plus d'espace */
+        background: white; /* Assurez-vous que le fond est visible */
+    }
+
+	/* couleur marqueurs */
+		img.redmarker { 
+			filter: hue-rotate(120deg); 
+		}	
+		img.greenmarker { 
+			filter: hue-rotate(240deg); 
+			}
+    </style>
+</head>
+<body>
+    <div id="formDiv">
+		<label >La recherche magique pour les moldus de l'immo <br><br></label>
+        <div class="tab">
+            <button class="tablinks active" onclick="openTab(event, 'form1')">Recherche par DPE</button>
+            <button class="tablinks" onclick="openTab(event, 'form2')">Recherche par parcelle (Beta)</button>
+        </div>
+
+        <div id="form1" class="tabcontent active">
+            <form id="queryForm1">
+                <label for="commune1">Commune :</label>
+				<div class="autocomplete">
+					<input type="text" id="commune1" name="commune1">
+				</div>
+                <label for="typeBatiment1">Type de bâtiment :</label>
+                <select id="typeBatiment1" name="typeBatiment1">
+                    <option value="maison">Maison</option>
+                    <option value="appartement">Appartement</option>
+                    <option value="immeuble">Immeuble</option>
+                </select>
+
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label for="dateDebut1">Date DPE entre le :</label>
+                        <input type="date" id="dateDebut1" name="dateDebut1">
+                    </div>
+                    <div class="form-group">
+                        <label for="dateFin1">et le :
+                            <span class="info-icon">ⓘ
+                                <span class="tooltip">Les DPE réalisés avant Juillet 2021 ne sont pas pris en compte pour le moment</span>
+                            </span>
+                        </label>
+                        <input type="date" id="dateFin1" name="dateFin1">
+                    </div>
+                </div>
+
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label for="etiquetteDPE1">Étiquette DPE :</label>
+                        <select id="etiquetteDPE1" name="etiquetteDPE1">
+                            <option value=""></option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="etiquetteGES1">Étiquette GES :</label>
+                        <select id="etiquetteGES1" name="etiquetteGES1">
+                            <option value=""></option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="inline-group">
+                    <div>
+                        <label for="surfaceMin1">Surface (m²) min :</label>
+                        <input type="number" id="surfaceMin1" name="surfaceMin1">
+                    </div>
+                    <div>
+                        <label for="surfaceMax1">max :</label>
+                        <input type="number" id="surfaceMax1" name="surfaceMax1">
+                    </div>
+                </div>
+
+                <label for="periodeconstruction1">Période de construction :</label>
+                <select id="periodeconstruction1" name="periodeconstruction1">
+                    <option value=""></option>
+                    <option value="avant 1948">Avant 1948</option>
+                    <option value="1948-1974">1948-1974</option>
+                    <option value="1975-1977">1975-1977</option>
+                    <option value="1978-1982">1978-1982</option>
+                    <option value="1983-1988">1983-1988</option>
+                    <option value="1989-2000">1989-2000</option>
+                    <option value="2001-2005">2001-2005</option>
+                    <option value="2006-2012">2006-2012</option>
+                    <option value="2013-2021">2013-2021</option>
+                    <option value="après 2021">après 2021</option>
+                </select>
+
+                <label for="anneeconstruction1">Année de construction :
+                    <span class="info-icon">ⓘ
+                        <span class="tooltip">Attention l'année exacte de construction n'est pas toujours renseignée dans la base de données DPE, si les résultats sont trop limités, supprimez ce critère.</span>
+                    </span>
+                </label>
+                <input type="text" id="anneeconstruction1" name="anneeconstruction1">
+				<div class="inline-group">
+					<button type="button" onclick="fetchData_rechercheparDPE()">RECHERCHER</button>
+					<button type="button" onclick="resetForm(event)">EFFACER LA RECHERCHE</button>
+				</div>
+                <div id="resultCount1"></div>
+            </form>
+        </div>
+
+        <div id="form2" class="tabcontent">
+            <form id="queryForm2">
+                <div class="inline-group">
+                    <div>
+						<!-- <h2>Attention</h2> -->
+                        <label for="tailleterrainMin2">Surface (m²) min :</label>
+                        <input type="number" id="tailleterrainMin2" name="tailleterrainMin2" value="50">
+                    </div>
+                    <div>
+                        <label for="tailleterrainMax2">max :</label>
+                        <input type="number" id="tailleterrainMax2" name="tailleterrainMax2" value="2500">
+                    </div>
+                </div>
+				<div class="inline-group">
+					<button type="button" onclick="fetchData_recherchepartailleparcelle()">RECHERCHER</button>
+					<button type="button" onclick="resetForm(event)">EFFACER LA RECHERCHE</button>
+				</div>
+                <div id="resultCount2"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="viewerDiv"></div>
+
+    <div id="infoPanel">
+        <div id="infoContent"></div>
+        <span id="closeInfoPanel">&times;</span>
+    </div>
+
+    <div id="popup">
+        <!-- <h2>Attention</h2> -->
+        <p id="popupMessage"></p>
+        <button onclick="closePopup()">Fermer</button>
+    </div>
+    <div id="overlay"></div>
+
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+	<script src="geoportal-wfs-client.js"></script>
+	<script src="map_requests_ob.js"></script>
+
+	
+</body>
+</html>
